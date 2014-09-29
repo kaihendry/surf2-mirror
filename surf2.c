@@ -267,7 +267,7 @@ decidepolicy(WebKitWebView *v, WebKitPolicyDecision *d,
 		rd = WEBKIT_RESPONSE_POLICY_DECISION(d);
 		if (!webkit_response_policy_decision_is_mime_type_supported(rd)) {
 			arg.v = webkit_uri_request_get_uri(
-			    webkit_navigation_policy_decision_get_request(nd));
+			    webkit_response_policy_decision_get_request(rd));
 			initdownload(c, &arg);
 			webkit_policy_decision_ignore(d);
 		}
