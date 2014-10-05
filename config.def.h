@@ -48,7 +48,7 @@ static WebKitFindOptions findopts = WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE |
 /* DOWNLOAD(URI, referer) */
 #define DOWNLOAD(d, r) { \
 	.v = (char *[]){ "/bin/sh", "-c", \
-		"st -e /bin/sh -xc \"" \
+		"st -e /bin/sh -c \"" \
 		"cd \"$4\";" \
 		"curl -L -J -O --user-agent '$1'" \
 		" --referer '$2' -b $3 -c $3 '$0';" \
