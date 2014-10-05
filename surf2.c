@@ -821,26 +821,26 @@ resourceloadstarted(WebKitWebView *v, WebKitWebResource *res,
 
 static void
 runjavascript(WebKitWebView *v, const char *jsstr, ...) {
-    va_list ap;
-    gchar *script;
+	va_list ap;
+	gchar *script;
 
-    va_start(ap, jsstr);
-    script = g_strdup_vprintf(jsstr, ap);
-    va_end(ap);
-    webkit_web_view_run_javascript(v, script, NULL, NULL, NULL);
-    g_free(script);
+	va_start(ap, jsstr);
+	script = g_strdup_vprintf(jsstr, ap);
+	va_end(ap);
+	webkit_web_view_run_javascript(v, script, NULL, NULL, NULL);
+	g_free(script);
 }
 
 static void
 scroll_v(struct _client *c, const union _arg *arg) {
 	runjavascript(c->view,
-		"window.scrollBy(%d * (window.innerWidth / 10), 0)", arg->i);
+		"window.scrollBy(0, %d * (window.innerHeight / 10))", arg->i);
 }
 
 static void
 scroll_h(struct _client *c, const union _arg *arg) {
 	runjavascript(c->view,
-		"window.scrollBy(0, %d * (window.innerWidth / 10))", arg->i);
+		"window.scrollBy(%d * (window.innerWidth / 10), 0)", arg->i);
 }
 
 static void
