@@ -119,7 +119,6 @@ static char setcookiepolicy(const WebKitCookieAcceptPolicy);
 static void setup(int *, char **[]);
 static void show(WebKitWebView *, struct _client *);
 static void sigchld(int);
-static void source(struct _client *, const union _arg *);
 static void spawn(struct _client *, const union _arg *);
 static void stop(struct _client *, const union _arg *);
 static void titlechanged(WebKitWebView *, GParamSpec *, struct _client *);
@@ -233,32 +232,38 @@ createwindow(WebKitWebView *v, struct _client *c) {
 static gboolean
 decidepolicy(WebKitWebView *v, WebKitPolicyDecision *d,
     WebKitPolicyDecisionType dt, struct _client *c) {
-	WebKitNavigationPolicyDecision *nd;
+	WebKitNavigationAction *na;
 	WebKitResponsePolicyDecision *rd;
 	guint button, mods;
 	union _arg arg;
 
 	switch (dt) {
 	case WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION:
-		nd = WEBKIT_NAVIGATION_POLICY_DECISION(d);
-		if (webkit_navigation_policy_decision_get_navigation_type(nd)
+		na = webkit_navigation_policy_decision_get_navigation_action(
+		    WEBKIT_NAVIGATION_POLICY_DECISION(d));
+
+		if (webkit_navigation_action_is_user_gesture(na)
+		    && webkit_navigation_action_get_navigation_type(na)
 		    == WEBKIT_NAVIGATION_TYPE_LINK_CLICKED) {
-			button = webkit_navigation_policy_decision_get_mouse_button(nd);
-			mods = webkit_navigation_policy_decision_get_modifiers(nd);
-			if (button == 2 || (button == 1 && mods & GDK_CONTROL_MASK)) {
+			button = webkit_navigation_action_get_mouse_button(na);
+			mods = webkit_navigation_action_get_modifiers(na);
+			if (button == 2 || (button == 1 && mods & CLEANMASK(MODKEY))) {
 				arg.v = webkit_uri_request_get_uri(
-				    webkit_navigation_policy_decision_get_request(nd));
+				    webkit_navigation_action_get_request(na));
 				newwindow(c, &arg, false);
 				webkit_policy_decision_ignore(d);
 			}
 		}
 		break;
 	case WEBKIT_POLICY_DECISION_TYPE_NEW_WINDOW_ACTION:
-		nd = WEBKIT_NAVIGATION_POLICY_DECISION(d);
-		if (webkit_navigation_policy_decision_get_navigation_type(nd)
+		na = webkit_navigation_policy_decision_get_navigation_action(
+		    WEBKIT_NAVIGATION_POLICY_DECISION(d));
+
+		if (webkit_navigation_action_is_user_gesture(na)
+		    && webkit_navigation_action_get_navigation_type(na)
 		    == WEBKIT_NAVIGATION_TYPE_LINK_CLICKED) {
 			arg.v = webkit_uri_request_get_uri(
-			    webkit_navigation_policy_decision_get_request(nd));
+			    webkit_navigation_action_get_request(na));
 			newwindow(c, &arg, false);
 		}
 		webkit_policy_decision_ignore(d);
@@ -387,10 +392,10 @@ static void
 gettogglestats(struct _client *c) {
 	gboolean enabled;
 	int p;
+	WebKitSettings *settings;
 
+	settings = webkit_web_view_get_settings(c->view);
 	p = 0;
-
-	WebKitSettings *settings = webkit_web_view_get_settings(c->view);
 
 	togglestats[p++] = setcookiepolicy(getcookiepolicy());
 
@@ -408,7 +413,7 @@ gettogglestats(struct _client *c) {
 	enabled = webkit_settings_get_enable_plugins(settings);
 	togglestats[p++] = enabled ? 'V' : 'v';
 
-	togglestats[p++] = stylefile[0] ? 'M': 'm';
+	togglestats[p++] = c->styled ? 'M': 'm';
 
 	togglestats[p] = '\0';
 }
@@ -625,7 +630,8 @@ newclient(void) {
 
 	addaccelgroup(c);
 
-	c->view = WEBKIT_WEB_VIEW(webkit_web_view_new());
+	c->view = WEBKIT_WEB_VIEW(webkit_web_view_new_with_user_content_manager(
+	    webkit_user_content_manager_new()));
 
 	gtk_container_add(GTK_CONTAINER(c->win), GTK_WIDGET(c->view));
 	gtk_widget_grab_focus(GTK_WIDGET(c->view));
@@ -929,19 +935,6 @@ sigchld(int unused) {
 }
 
 static void
-source(struct _client *c, const union _arg *arg) {
-	union _arg a;
-	WebKitViewMode mode;
-
-	a.b = FALSE;
-	mode = webkit_web_view_get_view_mode(c->view) == WEBKIT_VIEW_MODE_WEB ?
-		WEBKIT_VIEW_MODE_SOURCE : WEBKIT_VIEW_MODE_WEB;
-
-	webkit_web_view_set_view_mode(c->view, mode);
-	reload(c, &a);
-}
-
-static void
 spawn(struct _client *c, const union _arg *arg) {
 	if (fork() == 0) {
 		if (dpy)
@@ -1024,21 +1017,25 @@ togglegeolocation(struct _client *c, const union _arg *arg) {
 
 static void
 togglestyle(struct _client *c, const union _arg *arg) {
-	WebKitWebViewGroup *group;
-	char *uri;
+	WebKitUserContentManager *cm;
+	WebKitUserStyleSheet *ss;
+	gchar *style;
 
-	group = webkit_web_view_get_group(c->view);
+	cm = webkit_web_view_get_user_content_manager(c->view);
 
 	if (c->styled) {
-		webkit_web_view_group_remove_all_user_style_sheets(group);
+		webkit_user_content_manager_remove_all_style_sheets(cm);
 		c->styled = FALSE;
 	} else {
-		uri = stylefile[0] ? g_strdup("") : g_strconcat("file://", stylefile, NULL);
-		webkit_web_view_group_add_user_style_sheet(group, uri, NULL,
-				stylewhitelist, styleblacklist,
-				WEBKIT_INJECTED_CONTENT_FRAMES_ALL);
-		g_free(uri);
-		c->styled = TRUE;
+		g_file_get_contents(stylefile, &style, NULL, NULL);
+		if (style) {
+			ss = webkit_user_style_sheet_new(style,
+			    WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES, WEBKIT_USER_STYLE_LEVEL_USER,
+			    stylewhitelist, styleblacklist);
+			webkit_user_content_manager_add_style_sheet(cm, ss);
+			g_free(style);
+			c->styled = TRUE;
+		}
 	}
 
 	updatetitle(c);
