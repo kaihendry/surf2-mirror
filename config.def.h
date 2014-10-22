@@ -1,7 +1,7 @@
 /* modifier 0 means no modifier */
 static char *useragent      = "Mozilla/5.0 (X11; U; Unix; en-US) "
-    "AppleWebKit/537.15 (KHTML, like Gecko) Chrome/24.0.1295.0 "
-    "Safari/537.15 Surf/"VERSION;
+    "AppleWebKit/601.1 (KHTML, like Gecko) Version/8.0 "
+    "Safari/601.1 Surf/"VERSION;
 static char *downloaddir    = "~/";
 static char *scriptfile     = "~/.surf/script.js";
 static char *stylefile      = "~/.surf/style.css";
