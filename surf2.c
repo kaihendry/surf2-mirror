@@ -984,7 +984,6 @@ togglecookiepolicy(struct _client *c, const union _arg *arg)
 	WebKitCookieManager *cm;
 
 	cm = webkit_web_context_get_cookie_manager(webkit_web_context_get_default());
-	webkit_cookie_manager_get_accept_policy(cm, NULL, NULL, NULL);
 
 	cookiepolicy++;
 	cookiepolicy %= strlen(cookiepolicies);
