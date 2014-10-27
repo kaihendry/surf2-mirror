@@ -621,7 +621,7 @@ newclient(void) {
 	    "destroy",
 	    G_CALLBACK(destroywin), c);
 
-	gtk_widget_realize(GTK_WIDGET(c->win));
+	gtk_widget_show(c->win);
 
 	c->xwin = GDK_WINDOW_XID(gtk_widget_get_window(GTK_WIDGET(c->win)));
 
@@ -634,7 +634,6 @@ newclient(void) {
 	    webkit_user_content_manager_new()));
 
 	gtk_container_add(GTK_CONTAINER(c->win), GTK_WIDGET(c->view));
-	gtk_widget_grab_focus(GTK_WIDGET(c->view));
 
 	g_signal_connect(c->view, "notify::estimated-load-progress",
 	    G_CALLBACK(loadprogressed), c);
@@ -924,6 +923,7 @@ setup(int *argc, char **argv[]) {
 static void
 show(WebKitWebView *v, struct _client *c) {
 	gtk_widget_show_all(c->win);
+	gtk_widget_grab_focus(GTK_WIDGET(c->view));
 }
 
 static void
